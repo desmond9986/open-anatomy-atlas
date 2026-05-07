@@ -41,7 +41,12 @@ The viewer uses open anatomy assets for educational orientation only. It is not 
 
 - Primary model: Z-Anatomy / BodyParts3D, converted to GLB for this viewer.
 - Fallback assets: AnatomyTOOL Open3DModel selection models.
-- Attribution and license details are in [LICENSE.md](LICENSE.md).
+- App code is MIT licensed. Model attribution and asset license details are in [ASSET_LICENSES.md](ASSET_LICENSES.md).
+
+## License
+
+- Application code: [MIT](LICENSE)
+- Anatomy model assets: see [ASSET_LICENSES.md](ASSET_LICENSES.md)
 
 ## Project Structure
 
