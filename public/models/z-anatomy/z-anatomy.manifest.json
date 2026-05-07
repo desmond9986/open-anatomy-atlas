@@ -1,0 +1,19 @@
+{
+  "license": "Creative Commons Attribution-ShareAlike; Z-Anatomy / BodyParts3D",
+  "objects": 1652,
+  "source": "Z-Anatomy Zenodo 10.5281/zenodo.4953712",
+  "systems": {
+    "bone": 346,
+    "connective": 138,
+    "digestive": 20,
+    "lymphatic": 2,
+    "muscle": 584,
+    "nervous": 9,
+    "organ": 21,
+    "other": 47,
+    "reproductive": 11,
+    "respiratory": 13,
+    "urinary": 13,
+    "vascular": 448
+  }
+}
