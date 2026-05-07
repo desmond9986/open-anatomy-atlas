@@ -10,7 +10,9 @@
 - **Anatomy System**: The study category used to show or hide Anatomy Structures. Current systems include muscles, bones, tendons/ligaments, vessels, nerves, organs, and other source-provided systems.
 - **Z-Anatomy Atlas**: The preferred full-body `.blend` anatomy source from Z-Anatomy/BodyParts3D. It is converted to GLB before the browser loads it.
 - **Open3DModel Asset**: A downloaded GLB model from AnatomyTOOL/Open3DModel used as the detailed anatomy source.
+- **Anatomy Source**: A loadable model source that provides Anatomy Structures to the viewer. The Z-Anatomy Atlas is the preferred Anatomy Source; Open3DModel Assets are fallback Anatomy Sources.
 - **System Filter**: A user-controlled toggle that independently shows or hides Anatomy Structures by Anatomy System.
+- **Structure Visibility**: The current show/hide state for Anatomy Structures, combining System Filter state and manually hidden selections.
 - **Structure Description**: Educational copy generated from the source mesh name, Anatomy System, region, and known anatomy terms. It is not diagnostic medical guidance.
 - **Selection Panel**: The information area that displays the selected Anatomy Structure name, region, system, source, and Structure Description.
 

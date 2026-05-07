@@ -12,12 +12,20 @@ export type AnatomySystem =
   | 'organ'
   | 'other';
 
+export type AnatomyStructureId = string;
+
 export type AnatomyStructure = {
+  id: AnatomyStructureId;
   name: string;
   system: AnatomySystem;
   region: string;
   description: string;
   source: string;
+};
+
+export type AnatomyVisibilityStructure = {
+  id: AnatomyStructureId;
+  system: AnatomySystem;
 };
 
 export type AnatomySystemOption = {

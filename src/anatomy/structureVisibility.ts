@@ -1,19 +1,17 @@
-import type { AnatomySystem, AnatomySystemOption } from './types';
+import type { AnatomyStructureId, AnatomySystem, AnatomySystemOption, AnatomyVisibilityStructure } from './types';
 
-type VisibleAnatomyStructure = {
-  userData: {
-    system?: AnatomySystem;
-  };
-  visible: boolean;
+export type StructureVisibilityResult = {
+  visibleCount: number;
+  visibleStructureIds: ReadonlySet<AnatomyStructureId>;
 };
 
 export function createStructureVisibility() {
   let enabledSystems = new Set<AnatomySystem>();
-  const hiddenStructures = new Set<VisibleAnatomyStructure>();
+  const hiddenStructures = new Map<AnatomyStructureId, AnatomySystem>();
 
   function removeHiddenStructuresForSystem(system: AnatomySystem) {
-    for (const structure of hiddenStructures) {
-      if (structure.userData.system === system) hiddenStructures.delete(structure);
+    for (const [structureId, hiddenSystem] of hiddenStructures) {
+      if (hiddenSystem === system) hiddenStructures.delete(structureId);
     }
   }
 
@@ -24,21 +22,23 @@ export function createStructureVisibility() {
     get hiddenCount() {
       return hiddenStructures.size;
     },
-    applyTo(structures: VisibleAnatomyStructure[]) {
+    resolve(structures: AnatomyVisibilityStructure[]): StructureVisibilityResult {
+      const visibleStructureIds = new Set<AnatomyStructureId>();
       let visibleCount = 0;
       for (const structure of structures) {
-        const system = structure.userData.system;
-        structure.visible = !!system && enabledSystems.has(system) && !hiddenStructures.has(structure);
-        if (structure.visible) visibleCount += 1;
+        if (enabledSystems.has(structure.system) && !hiddenStructures.has(structure.id)) {
+          visibleStructureIds.add(structure.id);
+          visibleCount += 1;
+        }
       }
-      return visibleCount;
+      return { visibleCount, visibleStructureIds };
     },
     enableAll(systems: AnatomySystemOption[]) {
       enabledSystems = new Set(systems.map((system) => system.id));
       hiddenStructures.clear();
     },
-    hideStructure(structure: VisibleAnatomyStructure) {
-      hiddenStructures.add(structure);
+    hideStructure(structure: AnatomyVisibilityStructure) {
+      hiddenStructures.set(structure.id, structure.system);
     },
     restoreHidden() {
       hiddenStructures.clear();

@@ -1,11 +1,23 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { loadOpen3DModel } from './open3dModelLoader';
-import { loadZAnatomyModel } from './zAnatomyLoader';
+import { loadAnatomyAtlas } from './atlasSource';
+import type { LoadedAnatomyModel } from './anatomyModel';
 import { createStructureVisibility } from './structureVisibility';
 import { systemLabel } from './structureMetadata';
-import type { AnatomyStructure, AnatomySystem, AnatomySystemOption } from './types';
-import { mountAnatomyShell, renderSystemFilters } from './ui';
+import type { AnatomyStructure, AnatomySystem, AnatomySystemOption, AnatomyVisibilityStructure } from './types';
+import {
+  isDetailsPanelCollapsed,
+  isSystemsPanelCollapsed,
+  mountAnatomyShell,
+  renderSystemFilters,
+  setDetailsPanelCollapsed,
+  setSystemsPanelCollapsed,
+  showEmptySelection,
+  showSelectedStructure,
+  updateSourceStatus,
+  updateStructureActions,
+  updateVisibleStructureCount
+} from './ui';
 
 const FLOOR_Y = -2.26;
 const TARGET_BODY_HEIGHT = 6.75;
@@ -95,24 +107,10 @@ export function createAnatomyViewer(root: HTMLDivElement): AnatomyViewer {
   const clock = new THREE.Clock();
   const compactPanelsQuery = window.matchMedia('(max-width: 760px)');
 
-  function setPanelCollapsed(panel: HTMLElement, toggleButton: HTMLButtonElement, collapsed: boolean) {
-    panel.classList.toggle('collapsed', collapsed);
-    toggleButton.textContent = collapsed ? 'Show' : 'Minimize';
-    toggleButton.setAttribute('aria-expanded', String(!collapsed));
-  }
-
-  function setSystemsCollapsed(collapsed: boolean) {
-    setPanelCollapsed(shell.systemsPanel, shell.systemsToggleButton, collapsed);
-  }
-
-  function setDetailsCollapsed(collapsed: boolean) {
-    setPanelCollapsed(shell.detailsPanel, shell.detailsToggleButton, collapsed);
-  }
-
   function applyPanelDefaultsForViewport() {
     const shouldCollapse = compactPanelsQuery.matches;
-    setSystemsCollapsed(shouldCollapse);
-    setDetailsCollapsed(shouldCollapse);
+    setSystemsPanelCollapsed(shell, shouldCollapse);
+    setDetailsPanelCollapsed(shell, shouldCollapse);
   }
 
   function setEmphasis(mesh: THREE.Mesh | null, active: boolean) {
@@ -141,38 +139,44 @@ export function createAnatomyViewer(root: HTMLDivElement): AnatomyViewer {
   }
 
   function refreshStructureActions() {
-    shell.hideSelectedButton.disabled = !selected;
-    shell.restoreHiddenButton.disabled = visibility.hiddenCount === 0;
-    shell.restoreHiddenButton.textContent =
-      visibility.hiddenCount > 0 ? `Show hidden (${visibility.hiddenCount})` : 'Show hidden';
+    updateStructureActions(shell, !!selected, visibility.hiddenCount);
+  }
+
+  function structureForMesh(mesh: THREE.Mesh | null) {
+    return mesh?.userData.part as AnatomyStructure | undefined;
+  }
+
+  function visibilityStructureForMesh(mesh: THREE.Mesh): AnatomyVisibilityStructure | null {
+    const structure = structureForMesh(mesh);
+    return structure ? { id: structure.id, system: structure.system } : null;
   }
 
   function setSelection(mesh: THREE.Mesh | null) {
     if (selected && selected !== hovered) setEmphasis(selected, false);
     selected = mesh;
     setEmphasis(selected, true);
-    const structure = selected?.userData.part as AnatomyStructure | undefined;
+    const structure = structureForMesh(selected);
     if (!structure) {
-      shell.nameEl.textContent = 'Click any structure';
-      shell.regionEl.textContent = 'Rotate, zoom, then select a highlighted structure.';
-      shell.descriptionEl.textContent = 'Use the system filters to combine or isolate anatomy layers.';
+      showEmptySelection(shell, compactPanelsQuery.matches);
       refreshStructureActions();
-      if (compactPanelsQuery.matches) setDetailsCollapsed(true);
       return;
     }
-    shell.nameEl.textContent = structure.name;
-    shell.regionEl.textContent = `${structure.region} - ${systemLabel(structure.system)} - ${structure.source}`;
-    shell.descriptionEl.textContent = structure.description;
-    if (compactPanelsQuery.matches) {
-      setSystemsCollapsed(true);
-      setDetailsCollapsed(false);
-    }
+    showSelectedStructure(shell, structure, compactPanelsQuery.matches);
     refreshStructureActions();
   }
 
   function updateVisibility() {
-    const visibleCount = visibility.applyTo(anatomyMeshes);
-    shell.visibleCountEl.textContent = `${visibleCount.toLocaleString()} visible structures`;
+    const visibilityStructures = anatomyMeshes
+      .map(visibilityStructureForMesh)
+      .filter((structure): structure is AnatomyVisibilityStructure => !!structure);
+    const visibilityResult = visibility.resolve(visibilityStructures);
+
+    for (const mesh of anatomyMeshes) {
+      const structure = structureForMesh(mesh);
+      mesh.visible = !!structure && visibilityResult.visibleStructureIds.has(structure.id);
+    }
+
+    updateVisibleStructureCount(shell, visibilityResult.visibleCount);
     if (selected && !selected.visible) setSelection(null);
     refreshStructureActions();
   }
@@ -223,8 +227,9 @@ export function createAnatomyViewer(root: HTMLDivElement): AnatomyViewer {
   }
 
   function hideSelectedStructure() {
-    if (!selected) return;
-    visibility.hideStructure(selected);
+    const structure = structureForMesh(selected);
+    if (!structure) return;
+    visibility.hideStructure({ id: structure.id, system: structure.system });
     setEmphasis(selected, false);
     setSelection(null);
     updateVisibility();
@@ -235,19 +240,14 @@ export function createAnatomyViewer(root: HTMLDivElement): AnatomyViewer {
     updateVisibility();
   }
 
-  function applyLoadedModel(model: {
-    group: THREE.Group;
-    sourceText: string;
-    structures: THREE.Mesh[];
-    systemCounts: Map<AnatomySystem, number>;
-  }) {
+  function applyLoadedModel(model: LoadedAnatomyModel) {
     anatomyMeshes = model.structures;
     availableSystems = Array.from(model.systemCounts.entries())
       .map(([id, count]) => ({ count, id }))
       .sort((a, b) => systemLabel(a.id).localeCompare(systemLabel(b.id)));
     visibility.enableAll(availableSystems);
     body.add(model.group);
-    shell.sourceEl.textContent = model.sourceText;
+    updateSourceStatus(shell, model.sourceText);
     renderSystemFilters(shell.systemFiltersEl, availableSystems, visibility.enabledSystems, setSystemEnabled);
     updateVisibility();
     refreshStructureActions();
@@ -279,10 +279,10 @@ export function createAnatomyViewer(root: HTMLDivElement): AnatomyViewer {
   shell.showAllButton.addEventListener('click', () => setAllSystems(true));
   shell.hideAllButton.addEventListener('click', () => setAllSystems(false));
   shell.systemsToggleButton.addEventListener('click', () =>
-    setSystemsCollapsed(!shell.systemsPanel.classList.contains('collapsed'))
+    setSystemsPanelCollapsed(shell, !isSystemsPanelCollapsed(shell))
   );
   shell.detailsToggleButton.addEventListener('click', () =>
-    setDetailsCollapsed(!shell.detailsPanel.classList.contains('collapsed'))
+    setDetailsPanelCollapsed(shell, !isDetailsPanelCollapsed(shell))
   );
 
   window.addEventListener('resize', resize);
@@ -291,22 +291,15 @@ export function createAnatomyViewer(root: HTMLDivElement): AnatomyViewer {
   resize();
   animate();
 
-  void loadZAnatomyModel({
+  void loadAnatomyAtlas({
     dracoDecoderPath: '/draco/gltf/',
     floorY: FLOOR_Y,
     targetHeight: TARGET_BODY_HEIGHT
   })
-    .catch(() =>
-      loadOpen3DModel({
-        dracoDecoderPath: '/draco/gltf/',
-        floorY: FLOOR_Y,
-        targetHeight: TARGET_BODY_HEIGHT
-      })
-    )
     .then(applyLoadedModel)
     .catch((error) => {
       console.error(error);
-      shell.sourceEl.textContent = 'Detailed anatomy assets could not be loaded.';
+      updateSourceStatus(shell, 'Detailed anatomy assets could not be loaded.');
     });
 
   return {

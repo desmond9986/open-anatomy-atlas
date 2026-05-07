@@ -1,4 +1,4 @@
-import type { AnatomySystem, AnatomySystemOption } from './types';
+import type { AnatomyStructure, AnatomySystem, AnatomySystemOption } from './types';
 import { systemLabel } from './structureMetadata';
 
 export type AnatomyShell = {
@@ -128,6 +128,59 @@ export function mountAnatomyShell(root: HTMLDivElement): AnatomyShell {
     systemFiltersEl,
     visibleCountEl
   };
+}
+
+function setPanelCollapsed(panel: HTMLElement, toggleButton: HTMLButtonElement, collapsed: boolean) {
+  panel.classList.toggle('collapsed', collapsed);
+  toggleButton.textContent = collapsed ? 'Show' : 'Minimize';
+  toggleButton.setAttribute('aria-expanded', String(!collapsed));
+}
+
+export function setSystemsPanelCollapsed(shell: AnatomyShell, collapsed: boolean) {
+  setPanelCollapsed(shell.systemsPanel, shell.systemsToggleButton, collapsed);
+}
+
+export function setDetailsPanelCollapsed(shell: AnatomyShell, collapsed: boolean) {
+  setPanelCollapsed(shell.detailsPanel, shell.detailsToggleButton, collapsed);
+}
+
+export function isSystemsPanelCollapsed(shell: AnatomyShell) {
+  return shell.systemsPanel.classList.contains('collapsed');
+}
+
+export function isDetailsPanelCollapsed(shell: AnatomyShell) {
+  return shell.detailsPanel.classList.contains('collapsed');
+}
+
+export function showEmptySelection(shell: AnatomyShell, compact: boolean) {
+  shell.nameEl.textContent = 'Click any structure';
+  shell.regionEl.textContent = 'Rotate, zoom, then select a highlighted structure.';
+  shell.descriptionEl.textContent = 'Use the system filters to combine or isolate anatomy layers.';
+  if (compact) setDetailsPanelCollapsed(shell, true);
+}
+
+export function showSelectedStructure(shell: AnatomyShell, structure: AnatomyStructure, compact: boolean) {
+  shell.nameEl.textContent = structure.name;
+  shell.regionEl.textContent = `${structure.region} - ${systemLabel(structure.system)} - ${structure.source}`;
+  shell.descriptionEl.textContent = structure.description;
+  if (compact) {
+    setSystemsPanelCollapsed(shell, true);
+    setDetailsPanelCollapsed(shell, false);
+  }
+}
+
+export function updateSourceStatus(shell: AnatomyShell, sourceText: string) {
+  shell.sourceEl.textContent = sourceText;
+}
+
+export function updateStructureActions(shell: AnatomyShell, hasSelection: boolean, hiddenCount: number) {
+  shell.hideSelectedButton.disabled = !hasSelection;
+  shell.restoreHiddenButton.disabled = hiddenCount === 0;
+  shell.restoreHiddenButton.textContent = hiddenCount > 0 ? `Show hidden (${hiddenCount})` : 'Show hidden';
+}
+
+export function updateVisibleStructureCount(shell: AnatomyShell, visibleCount: number) {
+  shell.visibleCountEl.textContent = `${visibleCount.toLocaleString()} visible structures`;
 }
 
 export function renderSystemFilters(

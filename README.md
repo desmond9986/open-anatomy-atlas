@@ -53,6 +53,9 @@ The viewer uses open anatomy assets for educational orientation only. It is not 
 ```text
 src/anatomy/
   anatomyViewer.ts          Three.js scene, camera, picking, and UI wiring
+  atlasSource.ts            Anatomy Source loading order and fallback policy
+  anatomyModel.ts           Shared loaded-model normalization helpers
+  anatomyStructureFactory.ts Normalized Anatomy Structure creation
   structureVisibility.ts    System Filter and hidden-structure visibility rules
   zAnatomyLoader.ts         Z-Anatomy GLB loader
   open3dModelLoader.ts      Open3DModel fallback loader
