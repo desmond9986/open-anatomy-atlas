@@ -4,6 +4,22 @@ Open Anatomy Atlas is an interactive Three.js anatomy viewer for exploring a ful
 
 Live app: https://open-anatomy-atlas.vercel.app
 
+## Showcase
+
+### Full Anatomy Viewer
+
+![Open Anatomy Atlas desktop view](docs/screenshots/open-anatomy-atlas-desktop.png)
+
+### Selected Structure Details
+
+![Selected anatomy structure details](docs/screenshots/open-anatomy-atlas-selection.png)
+
+### Mobile Layout
+
+<p align="center">
+  <img src="docs/screenshots/open-anatomy-atlas-mobile.png" alt="Open Anatomy Atlas mobile layout" width="360">
+</p>
+
 ## Features
 
 - Full-body 3D anatomy model with muscles, bones, vessels, organs, nerves, and supporting structures.
