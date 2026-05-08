@@ -5,6 +5,7 @@ import type { LoadedAnatomyModel } from './anatomyModel';
 import { createStructureVisibility } from './structureVisibility';
 import { systemLabel } from './structureMetadata';
 import type { AnatomyStructure, AnatomySystem, AnatomySystemOption, AnatomyVisibilityStructure } from './types';
+import { logViewerError, logViewerEvent } from '../telemetry';
 import {
   isDetailsPanelCollapsed,
   isSystemsPanelCollapsed,
@@ -162,6 +163,12 @@ export function createAnatomyViewer(root: HTMLDivElement): AnatomyViewer {
       return;
     }
     showSelectedStructure(shell, structure, compactPanelsQuery.matches);
+    logViewerEvent('Structure Selected', {
+      name: structure.name,
+      region: structure.region,
+      source: structure.source,
+      system: structure.system
+    });
     refreshStructureActions();
   }
 
@@ -210,6 +217,7 @@ export function createAnatomyViewer(root: HTMLDivElement): AnatomyViewer {
     controls.target.copy(DEFAULT_CAMERA_TARGET);
     controls.cursor.copy(DEFAULT_CAMERA_TARGET);
     controls.update();
+    logViewerEvent('Camera Reset');
   }
 
   function setSystemEnabled(system: AnatomySystem, enabled: boolean) {
@@ -217,6 +225,10 @@ export function createAnatomyViewer(root: HTMLDivElement): AnatomyViewer {
     updateVisibility();
     renderSystemFilters(shell.systemFiltersEl, availableSystems, visibility.enabledSystems, setSystemEnabled);
     refreshStructureActions();
+    logViewerEvent('System Filter Changed', {
+      enabled,
+      system
+    });
   }
 
   function setAllSystems(enabled: boolean) {
@@ -224,20 +236,33 @@ export function createAnatomyViewer(root: HTMLDivElement): AnatomyViewer {
     updateVisibility();
     renderSystemFilters(shell.systemFiltersEl, availableSystems, visibility.enabledSystems, setSystemEnabled);
     refreshStructureActions();
+    logViewerEvent('All Systems Changed', {
+      enabled,
+      systems: availableSystems.length
+    });
   }
 
   function hideSelectedStructure() {
     const structure = structureForMesh(selected);
     if (!structure) return;
     visibility.hideStructure({ id: structure.id, system: structure.system });
+    logViewerEvent('Structure Hidden', {
+      name: structure.name,
+      source: structure.source,
+      system: structure.system
+    });
     setEmphasis(selected, false);
     setSelection(null);
     updateVisibility();
   }
 
   function restoreHiddenStructures() {
+    const restoredCount = visibility.hiddenCount;
     visibility.restoreHidden();
     updateVisibility();
+    logViewerEvent('Hidden Structures Restored', {
+      count: restoredCount
+    });
   }
 
   function applyLoadedModel(model: LoadedAnatomyModel) {
@@ -251,6 +276,23 @@ export function createAnatomyViewer(root: HTMLDivElement): AnatomyViewer {
     renderSystemFilters(shell.systemFiltersEl, availableSystems, visibility.enabledSystems, setSystemEnabled);
     updateVisibility();
     refreshStructureActions();
+    logViewerEvent('Atlas Loaded', {
+      source: model.sourceText,
+      structures: anatomyMeshes.length,
+      systems: availableSystems.length
+    });
+  }
+
+  function toggleSystemsPanel() {
+    const collapsed = !isSystemsPanelCollapsed(shell);
+    setSystemsPanelCollapsed(shell, collapsed);
+    logViewerEvent('Systems Panel Toggled', { collapsed });
+  }
+
+  function toggleDetailsPanel() {
+    const collapsed = !isDetailsPanelCollapsed(shell);
+    setDetailsPanelCollapsed(shell, collapsed);
+    logViewerEvent('Details Panel Toggled', { collapsed });
   }
 
   function animate() {
@@ -278,12 +320,8 @@ export function createAnatomyViewer(root: HTMLDivElement): AnatomyViewer {
   shell.restoreHiddenButton.addEventListener('click', restoreHiddenStructures);
   shell.showAllButton.addEventListener('click', () => setAllSystems(true));
   shell.hideAllButton.addEventListener('click', () => setAllSystems(false));
-  shell.systemsToggleButton.addEventListener('click', () =>
-    setSystemsPanelCollapsed(shell, !isSystemsPanelCollapsed(shell))
-  );
-  shell.detailsToggleButton.addEventListener('click', () =>
-    setDetailsPanelCollapsed(shell, !isDetailsPanelCollapsed(shell))
-  );
+  shell.systemsToggleButton.addEventListener('click', toggleSystemsPanel);
+  shell.detailsToggleButton.addEventListener('click', toggleDetailsPanel);
 
   window.addEventListener('resize', resize);
   compactPanelsQuery.addEventListener('change', applyPanelDefaultsForViewport);
@@ -291,6 +329,7 @@ export function createAnatomyViewer(root: HTMLDivElement): AnatomyViewer {
   resize();
   animate();
 
+  logViewerEvent('Atlas Load Started');
   void loadAnatomyAtlas({
     dracoDecoderPath: '/draco/gltf/',
     floorY: FLOOR_Y,
@@ -298,7 +337,7 @@ export function createAnatomyViewer(root: HTMLDivElement): AnatomyViewer {
   })
     .then(applyLoadedModel)
     .catch((error) => {
-      console.error(error);
+      logViewerError('Atlas Load Failed', error);
       updateSourceStatus(shell, 'Detailed anatomy assets could not be loaded.');
     });
 

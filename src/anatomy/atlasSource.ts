@@ -1,6 +1,7 @@
 import { loadOpen3DModel } from './open3dModelLoader';
 import type { LoadedAnatomyModel, LoadAnatomyModelOptions } from './anatomyModel';
 import { loadZAnatomyModel } from './zAnatomyLoader';
+import { logViewerWarning } from '../telemetry';
 
 type AnatomySourceAdapter = {
   load: (options: LoadAnatomyModelOptions) => Promise<LoadedAnatomyModel>;
@@ -19,7 +20,10 @@ export async function loadAnatomyAtlas(options: LoadAnatomyModelOptions) {
     try {
       return await adapter.load(options);
     } catch (error) {
-      console.warn(`${adapter.name} could not be loaded.`, error);
+      logViewerWarning('Anatomy Source Failed', {
+        error: error instanceof Error ? error.message : String(error),
+        source: adapter.name
+      });
       lastError = error;
     }
   }

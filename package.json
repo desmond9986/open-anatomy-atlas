@@ -10,6 +10,7 @@
     "prepare:z-anatomy": "blender -b downloads/z-anatomy/source/Z-Anatomy.blend --python scripts/export-z-anatomy-gltf.py -- public/models/z-anatomy/z-anatomy.glb public/models/z-anatomy/z-anatomy.manifest.json"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "@vitejs/plugin-react": "^5.0.0",
     "three": "^0.177.0",
     "typescript": "^5.8.0",
